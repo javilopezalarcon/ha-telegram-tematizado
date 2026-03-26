@@ -1,0 +1,112 @@
+telegram_tematizado:
+  alias: Enviar Mensaje Telegram Tematizado
+  description: >
+    Script to send Telegram messages to specific threads (topics) in a group,
+    with support for inline keyboards, parse modes, and optional titles.
+    Works in queued mode to prevent message collisions.
+  mode: queued
+  max: 10
+  fields:
+    message:
+      name: Mensaje / Message
+      description: Text of the Telegram message
+      required: true
+      selector:
+        text:
+    tema:
+      name: Tema / Topic
+      description: Target thread topic name
+      required: false
+      selector:
+        select:
+          options:
+            # CUSTOMIZE: Replace with your own topic names
+            - Domotica
+            - Alertas
+            - Sistema
+            - Salud
+            - Pruebas
+            - Electrodomesticos
+            - Confort
+            - Impresora
+    title:
+      name: Tí­tulo / Title
+      description: Optional message title (bold header)
+      required: false
+      selector:
+        text:
+    inline_keyboard:
+      name: Inline Keyboard
+      description: "List of callback commands. Example: [\"/Option1\", \"/Option2\"]"
+      required: false
+      selector:
+        object:
+    parse_mode:
+      name: Parse mode
+      required: false
+      selector:
+        select:
+          options:
+            - label: HTML
+              value: html
+            - label: Markdown
+              value: markdown
+            - label: MarkdownV2
+              value: markdownv2
+            - label: Plain text
+              value: plain_text
+
+  sequence:
+    - variables:
+        # CUSTOMIZE: Replace with your Telegram group chat_id
+        CHAT_ID: "YOUR_CHAT_ID_HERE"
+
+        # CUSTOMIZE: Map your topic names to their message_thread_id
+        # To find thread IDs, send a message to the topic and check the
+        # telegram_bot.message_received event in HA Developer Tools
+        THREAD_TABLE: >
+          {{
+            {
+              "Domotica": 2,
+              "Alertas": 3,
+              "Sistema": 4,
+              "Salud": 5,
+              "Pruebas": 6,
+              "Electrodomesticos": 7,
+              "Confort": 8,
+              "Impresora": 9
+            }
+          }}
+
+        THREAD_ID: "{{ THREAD_TABLE[tema] if tema is defined and tema in THREAD_TABLE else none }}"
+        INLINE: "{{ inline_keyboard | default('') }}"
+        TITLE: "{{ title | default('') }}"
+        PARSE_MODE: >
+          {% if parse_mode is defined and parse_mode not in ['', 'plain_text'] %}
+            {{ parse_mode }}
+          {% else %}
+            plain_text
+          {% endif %}
+        MSG: "{{ message | default('') }}"
+
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ INLINE != '' }}"
+          sequence:
+            - data:
+                chat_id: "{{ CHAT_ID }}"
+                message: "{{ MSG }}"
+                message_thread_id: "{{ THREAD_ID }}"
+                title: "{{ TITLE }}"
+                parse_mode: "{{ PARSE_MODE }}"
+                inline_keyboard: "{{ INLINE }}"
+              action: telegram_bot.send_message
+      default:
+        - data:
+            chat_id: "{{ CHAT_ID }}"
+            message: "{{ MSG }}"
+            message_thread_id: "{{ THREAD_ID }}"
+            title: "{{ TITLE }}"
+            parse_mode: "{{ PARSE_MODE }}"
+          action: telegram_bot.send_message
