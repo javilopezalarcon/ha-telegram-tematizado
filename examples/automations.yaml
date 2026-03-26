@@ -1,0 +1,126 @@
+# ============================================================
+# EXAMPLES: Using script.telegram_tematizado in automations
+# ============================================================
+# These are real-world examples showing different use cases.
+# Adapt entity names, topics and messages to your setup.
+# ============================================================
+
+# EXAMPLE 1: Simple notification on HA restart
+alias: HA Restarted Notification
+triggers:
+  - trigger: homeassistant
+    event: start
+actions:
+  - action: script.telegram_tematizado
+    data:
+      message: "Home Assistant has restarted."
+      tema: Sistema
+mode: single
+
+
+# EXAMPLE 2: Plain text alert
+alias: Door Left Open
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+    for:
+      minutes: 5
+actions:
+  - action: script.telegram_tematizado
+    data:
+      message: "Front door has been open for 5 minutes!"
+      tema: Alertas
+      parse_mode: plain_text
+mode: single
+
+
+# EXAMPLE 3: MarkdownV2 formatted message â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+alias: Appliance Finished
+triggers:
+  - trigger: state
+    entity_id: sensor.washing_machine_state
+    to: "Finished"
+actions:
+  - action: script.telegram_tematizado
+    data:
+      message: "*Washing machine* has finished\\."
+      tema: Electrodomesticos
+      parse_mode: markdownv2
+mode: single
+
+
+# EXAMPLE 4: Message with inline keyboard (callback)
+alias: High Power Consumption Alert
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.power_consumption
+    above: 4000
+    for:
+      minutes: 1
+actions:
+  - action: script.telegram_tematizado
+    data:
+      message: "High power consumption detected ({{ states('sensor.power_consumption') }} W). What do you want to do?"
+      tema: Alertas
+      inline_keyboard:
+        - "/Turn off AC"
+        - "/Ignore"
+mode: single
+
+
+# EXAMPLE 5: With title
+alias: Weekly Summary
+triggers:
+  - trigger: time
+    at: "20:00:00"
+  - condition: time
+    weekday:
+      - sun
+actions:
+  - action: script.telegram_tematizado
+    data:
+      title: "Weekly Summary"
+      message: >
+        Washing machine ran {{ states('sensor.washing_machine_cycles_week') }} times.
+        AC cooled for {{ states('sensor.ac_cooling_hours_week') }} hours.
+      tema: Domotica
+mode: single
+
+
+# EXAMPLE 6: Handling inline keyboard callbacks
+# This automation listens for the callback from Example 4
+alias: Handle Power Callback
+triggers:
+  - trigger: event
+    event_type: telegram_callback
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.event.data.data | trim == '/Turn off AC' }}"
+        sequence:
+          - data:
+              chat_id: "{{ trigger.event.data.chat_id }}"
+              message_id: "{{ trigger.event.data.message.message_id }}"
+            action: telegram_bot.delete_message
+          - action: climate.turn_off
+            target:
+              entity_id: climate.air_conditioner
+          - action: script.telegram_tematizado
+            data:
+              message: "AC turned off."
+              tema: Alertas
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.event.data.data | trim == '/Ignore' }}"
+        sequence:
+          - data:
+              chat_id: "{{ trigger.event.data.chat_id }}"
+              message_id: "{{ trigger.event.data.message.message_id }}"
+            action: telegram_bot.delete_message
+          - action: script.telegram_tematizado
+            data:
+              message: "OK, no action taken."
+              tema: Alertas
+mode: single
