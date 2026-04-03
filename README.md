@@ -1,6 +1,6 @@
 # 📨 ha-telegram-tematizado
 
-A Home Assistant script for sending **themed Telegram notifications** to specific **thread topics** within a Telegram group, with support for inline keyboards, parse modes, and optional titles.
+A Home Assistant script for sending **themed Telegram notifications** to specific **thread topics** within a Telegram group, with support for inline keyboards, parse modes, optional titles, **and photo/video attachments**.
 
 Built and battle-tested in a real smart home with 80+ automations.
 
@@ -8,12 +8,14 @@ Built and battle-tested in a real smart home with 80+ automations.
 
 ## ✨ Features
 
-- 📂 Routes messages to **specific Telegram group topics** (threads) by name
-- ⌨️ Supports **inline keyboards** for actionable notifications
-- 🎨 Supports **MarkdownV2, HTML, Markdown, and plain text** formatting
-- 🏷️ Optional **message title**
-- 🔄 Runs in **queued mode** — no message collisions under parallel automations
-- 🧩 Simple to call from any automation, script or action
+* 📂 Routes messages to **specific Telegram group topics** (threads) by name
+* 📸 Supports **photo and video** attachments via local path or URL
+* ⌨️ Supports **inline keyboards** for actionable notifications
+* 🎨 Supports **MarkdownV2, HTML, Markdown, and plain text** formatting
+* 🏷️ Optional **message title** (text messages only)
+* 🔒 Configurable **SSL verification** (defaults to `false` for local `http://` sources)
+* 🔄 Runs in **queued mode** — no message collisions under parallel automations
+* 🧩 Simple to call from any automation, script or action
 
 ---
 
@@ -22,7 +24,7 @@ Built and battle-tested in a real smart home with 80+ automations.
 1. A **Telegram Bot** created via [@BotFather](https://t.me/BotFather)
 2. The bot added to your Telegram **group with topic support enabled**
 3. The [Telegram Bot integration](https://www.home-assistant.io/integrations/telegram_bot/) configured in Home Assistant
-4. Your group **chat_id** and each topic's **message_thread_id**
+4. Your group **chat\_id** and each topic's **message\_thread\_id**
 
 ---
 
@@ -40,15 +42,16 @@ telegram_bot:
       - YOUR_CHAT_ID   # negative number for groups, e.g. -1001234567890
 ```
 
-### 2. Find your chat_id and thread IDs
+### 2. Find your chat\_id and thread IDs
 
-**chat_id:** Send a message to your group and check the event `telegram_bot.message_received` in **Developer Tools → Events**. The `chat_id` field is your group ID (negative number).
+**chat\_id:** Send a message to your group and check the event `telegram_bot.message_received` in **Developer Tools → Events**. The `chat_id` field is your group ID (negative number).
 
-**message_thread_id:** Do the same but send the message inside a specific topic. The event will include `message_thread_id` for that topic.
+**message\_thread\_id:** Do the same but send the message inside a specific topic. The event will include `message_thread_id` for that topic.
 
 ### 3. Add the script to Home Assistant
 
 **Option A — Via UI (recommended):**
+
 1. Go to **Settings → Automations & Scenes → Scripts**
 2. Click the three-dot menu → **Edit in YAML**
 3. Paste the content of `script.yaml`
@@ -59,15 +62,14 @@ telegram_bot:
 If you use a separate `scripts.yaml`, paste the content directly (without the top-level key, starting from `alias:`).
 
 In `configuration.yaml`, make sure you have:
+
 ```yaml
 script: !include scripts.yaml
 ```
 
 ### 4. Customize topics
 
-> ⚠️ **Important:** There are **two places** you need to update when adding or renaming topics — if they get out of sync the UI dropdown won't match the actual routing logic and messages may silently go to the wrong thread (or nowhere).
-
-**4a. Update `THREAD_TABLE`** in the script variables — this is the actual routing map:
+Edit the `THREAD_TABLE` variable in the script to match your group's topics:
 
 ```yaml
 THREAD_TABLE: >
@@ -81,21 +83,7 @@ THREAD_TABLE: >
   }}
 ```
 
-**4b. Update the `selector` options** in `fields.tema` — this controls the dropdown in the HA UI:
-
-```yaml
-fields:
-  tema:
-    selector:
-      select:
-        options:
-          - Alerts
-          - Home
-          - System
-          - Appliances
-```
-
-Both lists must use **exactly the same names** (case-sensitive).
+And update the `selector` options in `fields.tema` to match.
 
 ---
 
@@ -110,7 +98,7 @@ data:
   tema: Alerts
 ```
 
-### With inline keyboard:
+### With inline keyboard
 
 ```yaml
 action: script.telegram_tematizado
@@ -122,7 +110,7 @@ data:
     - "/Leave it on"
 ```
 
-### With MarkdownV2 formatting:
+### With MarkdownV2 formatting
 
 ```yaml
 action: script.telegram_tematizado
@@ -132,7 +120,7 @@ data:
   parse_mode: markdownv2
 ```
 
-### With title:
+### With title
 
 ```yaml
 action: script.telegram_tematizado
@@ -142,19 +130,63 @@ data:
   tema: Home
 ```
 
-> 💡 See [`examples/automations.yaml`](examples/automations.yaml) for more real-world examples including callback handling.
+### With photo (local file)
+
+```yaml
+action: script.telegram_tematizado
+data:
+  photo: /config/www/images/snapshot.jpg
+  message: "🖨️ Print started"
+  tema: Printer
+```
+
+### With photo (local http URL)
+
+```yaml
+action: script.telegram_tematizado
+data:
+  photo: http://192.168.1.x/webcam/snapshot
+  message: "📷 Camera snapshot"
+  tema: Alerts
+```
+
+### With video
+
+```yaml
+action: script.telegram_tematizado
+data:
+  video: http://192.168.1.x/webcam/clip.mp4
+  message: "🎥 Motion clip"
+  tema: Alerts
+```
+
+### With SSL verification (HTTPS sources only)
+
+```yaml
+action: script.telegram_tematizado
+data:
+  photo: https://your-domain.com/snapshot.jpg
+  message: "📸 External camera"
+  tema: Alerts
+  verify_ssl: true
+```
+
+> 💡 See [`examples/automations.yaml`](examples/automations.yaml) for more real-world examples including callback handling and media sending.
 
 ---
 
 ## ⚙️ Parameters
 
-| Parameter | Required | Description |
-|---|---|---|
-| `message` | ✅ | The message text |
-| `tema` | ❌ | Topic name (maps to `message_thread_id`). If omitted, sends to group root |
-| `title` | ❌ | Optional bold title shown above the message |
-| `inline_keyboard` | ❌ | List of callback command strings |
-| `parse_mode` | ❌ | `plain_text` (default), `html`, `markdown`, `markdownv2` |
+| Parameter | Required | Default | Description |
+| --- | --- | --- | --- |
+| `message` | ❌ | — | Message text or media caption |
+| `tema` | ❌ | — | Topic name (maps to `message_thread_id`). If omitted, sends to group root |
+| `title` | ❌ | — | Optional bold title (text messages only, ignored for photo/video) |
+| `inline_keyboard` | ❌ | — | List of callback command strings |
+| `parse_mode` | ❌ | `plain_text` | `plain_text`, `html`, `markdown`, `markdownv2` |
+| `photo` | ❌ | — | Local path (`/config/www/...`) or URL of image to send |
+| `video` | ❌ | — | Local path or URL of video to send |
+| `verify_ssl` | ❌ | `false` | Set to `true` only for HTTPS sources with valid certificates |
 
 ---
 
@@ -173,18 +205,31 @@ ha-telegram-tematizado/
 
 ## ⚠️ Important notes
 
-- **MarkdownV2** requires escaping special characters (`.`, `-`, `!`, `(`, `)`, etc.) with a backslash. Use `plain_text` when in doubt.
-- Inline keyboard callbacks must be handled in a separate automation listening to the `telegram_callback` event. See the example.
-- The script runs in `queued` mode with `max: 10`. Adjust if you have very high notification volume.
-- Topic names are **case-sensitive** — `"Alerts"` and `"alerts"` are treated as different keys.
+* **MarkdownV2** requires escaping special characters (`.`, `-`, `!`, `(`, `)`, etc.) with a backslash. Use `plain_text` when in doubt.
+* Inline keyboard callbacks must be handled in a separate automation listening to the `telegram_callback` event. See the example.
+* The script runs in `queued` mode. Adjust `max` if you have very high notification volume.
+* `verify_ssl` defaults to `false` — appropriate for local `http://` sources like cameras or Klipper. Set to `true` only for external HTTPS endpoints with valid certificates.
+* When sending **photo or video**, `title` is ignored by the Telegram Bot API. Use `message` as the caption instead.
 
 ---
 
-## 🤝 Contributing
+## 📋 Changelog
 
-PRs and issues welcome. If you improve it or adapt it for your setup, share it back!
+### v1.1.0
+- Added `photo` field — send images from local path or URL
+- Added `video` field — send videos from local path or URL
+- Added `verify_ssl` field — boolean, defaults to `false`
+- `message` is now optional (used as caption when sending media)
+- Fully backward compatible — no changes needed in existing automations
+
+### v1.0.0
+- Initial release
+- Text messages routed to Telegram group topics by name
+- Fields: `message`, `tema`, `title`, `inline_keyboard`, `parse_mode`
 
 ---
+
+*Made with ☕ and too many automations in Benidorm, Spain.*
 
 ## ☕ Buy me a coffee
 
