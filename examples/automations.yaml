@@ -124,3 +124,74 @@ actions:
               message: "OK, no action taken."
               tema: Alertas
 mode: single
+
+# EXAMPLE 7: Send photo from local file
+# Useful for 3D printer thumbnails, snapshots saved to disk, etc.
+
+alias: 3D Print Started - Photo Notification
+triggers:
+  - trigger: state
+    entity_id: sensor.printer_state
+    to: "printing"
+actions:
+  - action: camera.snapshot
+    data:
+      filename: /config/www/images/print_thumbnail.jpg
+    target:
+      entity_id: camera.printer_thumbnail
+  - action: script.telegram_tematizado
+    data:
+      photo: /config/www/images/print_thumbnail.jpg
+      message: "🖨️ Print started: {{ states('sensor.printer_filename') }}"
+      tema: Printer
+mode: single
+
+# EXAMPLE 8: Send photo from local http URL (e.g. camera or Klipper webcam)
+# verify_ssl defaults to false — no need to set it explicitly for http:// sources
+
+alias: 3D Print Finished - Webcam Snapshot
+triggers:
+  - trigger: state
+    entity_id: sensor.printer_state
+    to: "complete"
+actions:
+  - action: script.telegram_tematizado
+    data:
+      photo: http://192.168.1.x/webcam/snapshot
+      message: "🖨️ Print finished!"
+      tema: Printer
+mode: single
+
+# EXAMPLE 9: Send video from local http URL
+
+alias: Motion Detected - Video Clip
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.motion_sensor
+    to: "on"
+actions:
+  - action: script.telegram_tematizado
+    data:
+      video: http://192.168.1.x/clips/motion.mp4
+      message: "🎥 Motion detected!"
+      tema: Alertas
+mode: single
+
+# EXAMPLE 10: Send photo with inline keyboard
+# Combine media + actionable buttons in a single call
+
+alias: Print Complete - Ask What To Do
+triggers:
+  - trigger: state
+    entity_id: sensor.printer_state
+    to: "complete"
+actions:
+  - action: script.telegram_tematizado
+    data:
+      photo: http://192.168.1.x/webcam/snapshot
+      message: "🖨️ Print finished! What do you want to do?"
+      tema: Printer
+      inline_keyboard:
+        - "/Turn off printer"
+        - "/Leave printer on"
+mode: single
